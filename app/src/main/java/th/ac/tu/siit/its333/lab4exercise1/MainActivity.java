@@ -10,7 +10,9 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -28,8 +30,33 @@ public class MainActivity extends ActionBarActivity {
     protected void onResume() {
         super.onResume();
 
-        // This method is called when this activity is put foreground.
+        TextView tvgp = (TextView) findViewById(R.id.tvGP);
+        TextView tvcr = (TextView) findViewById(R.id.tvCR);
+        TextView tvgpa = (TextView) findViewById(R.id.tvGPA);
 
+        // This method is called when this activity is put foreground.
+        helper = new CourseDBHelper(this);
+        SQLiteDatabase db = helper.getReadableDatabase();
+
+        Cursor cursor1 = db.rawQuery("SELECT SUM(credit), SUM(credit*value) FROM course;",null);
+        cursor1.moveToFirst();
+
+        double tempgp = cursor1.getDouble(1);
+        int credit = cursor1.getInt(0);
+
+        if(credit != 0) {
+
+            double gpa = tempgp/credit;
+
+            tvgp.setText(Double.toString(tempgp));
+            tvcr.setText(Integer.toString(credit));
+            tvgpa.setText(String.format("%.2f",gpa));
+        }
+        else{
+            tvgp.setText("0.0");
+            tvcr.setText("0");
+            tvgpa.setText("0.0");
+        }
     }
 
     public void buttonClicked(View v) {
@@ -48,7 +75,12 @@ public class MainActivity extends ActionBarActivity {
                 break;
 
             case R.id.btReset:
-
+                helper = new CourseDBHelper(this);
+                SQLiteDatabase db = helper.getReadableDatabase();
+                db.delete("course","",null);
+                onResume();
+                Toast t = Toast.makeText(this.getApplicationContext(),"All courses are cleared",Toast.LENGTH_SHORT);
+                t.show();
                 break;
         }
     }
@@ -61,6 +93,26 @@ public class MainActivity extends ActionBarActivity {
                 int credit = data.getIntExtra("credit", 0);
                 String grade = data.getStringExtra("grade");
 
+                helper = new CourseDBHelper(this);
+                SQLiteDatabase db = helper.getWritableDatabase();
+                ContentValues r = new ContentValues();
+                r.put("code", code);
+                r.put("credit", credit);
+                r.put("grade", grade);
+                r.put("value", gradeToValue(grade));
+                long new_id = db.insert("course", null, r);
+
+                if (new_id == -1) {
+                    Toast t = Toast.makeText(this.getApplicationContext(), "Add course failed"
+                            , Toast.LENGTH_SHORT);
+                    t.show();
+                }
+                else {
+                    Toast t = Toast.makeText(this.getApplicationContext(), "Add course succeeded"
+                            , Toast.LENGTH_SHORT);
+                    t.show();
+                }
+                db.close();
             }
         }
 
